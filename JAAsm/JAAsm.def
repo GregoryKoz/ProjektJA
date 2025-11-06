@@ -1,2 +1,4 @@
 LIBRARY JAAsm
 EXPORTS MyProc1
+EXPORTS MultiplyAsm
+EXPORTS MultiplyAsmPartial

@@ -46,4 +46,12 @@
       <Filter>Pliki zasobów</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="MacierzA.txt">
+      <Filter>Pliki źródłowe</Filter>
+    </Text>
+    <Text Include="MacierzB.txt">
+      <Filter>Pliki źródłowe</Filter>
+    </Text>
+  </ItemGroup>
 </Project>
