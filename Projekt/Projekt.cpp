@@ -1,8 +1,8 @@
 ﻿// Projekt.cpp : Definiuje punkt wejścia dla aplikacji.
 /*
-* 04.11.2025
+* 18.11.2025
 * na nastepny raz
-* DDL w C++ ktora bedzie dzialac + mierzenie czasu
+* Coś wektorowo w asmie
 * 
 */
 #include "framework.h"
@@ -25,30 +25,13 @@ double ZmierzCzas(std::function<void()> func)
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&start);
 
-    func(); // wykonaj kod, który mierzymy
+    func(); 
 
     QueryPerformanceCounter(&end);
-    return static_cast<double>(end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart; // w milisekundach
+    return static_cast<double>(end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart; 
 }
 
-void ZapiszMacierzDoPliku(const std::wstring& filename,
-    const std::vector<double>& M, int rows, int cols,
-    double czas, int nThreads)
-{
-    std::wofstream file(filename);
-    if (!file.is_open()) return;
 
-    file << L"Wynik mnożenia macierzy (" << rows << L"x" << cols << L")\n";
-    file << L"Liczba wątków: " << nThreads << L"\n";
-    file << L"Czas obliczeń: " << std::fixed << std::setprecision(2) << czas << L" ms\n";
-    file << L"----------------------------------------------\n";
-
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j)
-            file << std::setw(10) << std::setprecision(4) << M[i * cols + j] << L" ";
-        file << L"\n";
-    }
-}
 void PokazMacierz(HWND hWndParent, const std::vector<double>& M, int rows, int cols, double czas, int nThreads)
 {
     if (M.empty()) {
@@ -86,6 +69,29 @@ void PokazMacierz(HWND hWndParent, const std::vector<double>& M, int rows, int c
 
     std::wstring text = ss.str();
     SetWindowTextW(hWndEdit, text.c_str());
+}
+void ZapiszMacierzDoCSV(const std::wstring& filename,
+    const std::vector<double>& M, int rows, int cols,
+    double czas, int nThreads, const std::wstring& tryb)
+{
+    std::wofstream file(filename);
+    if (!file.is_open()) return;
+
+    // Nagłówki
+    file << L"Wynik mnozenia macierzy;" << rows << L"x" << cols << L"\n";
+    file << L"Tryb;" << tryb << L"\n";
+    file << L"Liczba watkow;" << nThreads << L"\n";
+    file << L"Czas [ms];" << std::fixed << std::setprecision(2) << czas << L"\n";
+    file << L"\n";  // pusty wiersz
+
+    // Właściwa macierz
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            file << std::setprecision(4) << M[i * cols + j];
+            if (j + 1 < cols) file << L";";  // separator CSV
+        }
+        file << L"\n";
+    }
 }
 std::vector<double> WczytajMacierz(const std::wstring& filename, int& rows, int& cols)
 {
@@ -375,7 +381,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
             case 3003: // Oblicz
             {
-               
                 if (macierzA.empty() || macierzB.empty()) {
                     MessageBoxW(hWnd, L"Najpierw wczytaj obie macierze!", L"Błąd", MB_OK | MB_ICONERROR);
                     break;
@@ -389,11 +394,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     MessageBoxW(hWnd, L"Plik z macierzą ma nierówne wiersze / zły format.", L"Błąd danych", MB_OK | MB_ICONERROR);
                     break;
                 }
-                if(PodanaLiczbaW>64){
+                if (PodanaLiczbaW > 64) {
                     MessageBoxW(hWnd, L"Podano za dużą liczbe wątków! Max = 64", L"Błąd", MB_OK | MB_ICONERROR);
                     break;
                 }
+
                 std::vector<double> macierzC(rowsA * colsB, 0.0);
+
+                // ---- PADDING ----
+                int colsB_pad = (colsB + 3) & ~3;
+                std::vector<double> macierzB_pad(rowsB * colsB_pad, 0.0);
+                for (int i = 0; i < rowsB; ++i)
+                    memcpy(&macierzB_pad[i * colsB_pad],
+                        &macierzB[i * colsB],
+                        colsB * sizeof(double));
+
+                std::vector<double> macierzC_pad(rowsA * colsB_pad, 0.0);
+                // ------------------
 
                 const BOOL cppChecked = (SendMessageW(GetDlgItem(hWnd, 2001), BM_GETCHECK, 0, 0) == BST_CHECKED);
                 const BOOL asmChecked = (SendMessageW(GetDlgItem(hWnd, 2002), BM_GETCHECK, 0, 0) == BST_CHECKED);
@@ -426,28 +443,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     int chunk = rowsA / nThreads;
                     int remainder = rowsA % nThreads;
 
-                    std::vector<std::thread> threads;
-                    int current = 0;
-
-                    for (int i = 0; i < nThreads; ++i) {
-                        int start = current;
-                        int end = start + chunk + (i < remainder ? 1 : 0);
-                        threads.emplace_back([&, start, end]() {
-                            multiplyCppPartial(macierzA.data(), macierzB.data(), macierzC.data(),
-                                rowsA, colsA, colsB, start, end);
-                            });
-                        current = end;
-                    }
-
                     double czasCPP = ZmierzCzas([&]() {
-                        for (auto& t : threads) t.join();
+                        std::vector<std::thread> threads;
+                        int current = 0;
+
+                        for (int i = 0; i < nThreads; ++i) {
+                            int start = current;
+                            int end = start + chunk + (i < remainder ? 1 : 0);
+
+                            threads.emplace_back([&, start, end]() {
+                                multiplyCppPartial(
+                                    macierzA.data(),
+                                    macierzB_pad.data(),
+                                    macierzC_pad.data(),
+                                    rowsA, colsA, colsB_pad,
+                                    start, end);
+                                });
+
+                            current = end;
+                        }
+
+                        for (auto& t : threads)
+                            t.join();
                         });
 
+                    // kopiowanie bez paddingu
+                    for (int i = 0; i < rowsA; ++i)
+                        memcpy(&macierzC[i * colsB],
+                            &macierzC_pad[i * colsB_pad],
+                            colsB * sizeof(double));
+
                     PokazMacierz(hWnd, macierzC, rowsA, colsB, czasCPP, nThreads);
-                    ZapiszMacierzDoPliku(L"wynikCPP.txt", macierzC, rowsA, colsB, czasCPP, nThreads);
+                    ZapiszMacierzDoCSV(L"wynikCPP.csv", macierzC, rowsA, colsB, czasCPP, nThreads, L"C++");
                     FreeLibrary(dllCpp);
                 }
                 else if (asmChecked) {
+
                     HINSTANCE dllAsm = LoadLibraryW(L"JAAsm.dll");
                     if (!dllAsm) {
                         MessageBoxW(hWnd, L"Nie mogę załadować JAAsm.dll!", L"Błąd", MB_OK | MB_ICONERROR);
@@ -464,7 +495,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         break;
                     }
 
-                    
                     wchar_t bufThreads[16];
                     GetWindowTextW(GetDlgItem(hWnd, 4001), bufThreads, 16);
                     int nThreads = _wtoi(bufThreads);
@@ -476,25 +506,37 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     int chunk = rowsA / nThreads;
                     int remainder = rowsA % nThreads;
 
-                    std::vector<std::thread> threads;
-                    int current = 0;
-
-                    for (int i = 0; i < nThreads; ++i) {
-                        int start = current;
-                        int end = start + chunk + (i < remainder ? 1 : 0);
-                        threads.emplace_back([&, start, end]() {
-                            multiplyAsmPartial(macierzA.data(), macierzB.data(), macierzC.data(),
-                                rowsA, colsA, colsB, start, end);
-                            });
-                        current = end;
-                    }
-
                     double czasASM = ZmierzCzas([&]() {
-                        for (auto& t : threads) t.join();
+                        std::vector<std::thread> threads;
+                        int current = 0;
+
+                        for (int i = 0; i < nThreads; ++i) {
+                            int start = current;
+                            int end = start + chunk + (i < remainder ? 1 : 0);
+
+                            threads.emplace_back([&, start, end]() {
+                                multiplyAsmPartial(
+                                    macierzA.data(),
+                                    macierzB_pad.data(),
+                                    macierzC_pad.data(),
+                                    rowsA, colsA, colsB_pad,
+                                    start, end);
+                                });
+
+                            current = end;
+                        }
+
+                        for (auto& t : threads)
+                            t.join();
                         });
 
+                    for (int i = 0; i < rowsA; ++i)
+                        memcpy(&macierzC[i * colsB],
+                            &macierzC_pad[i * colsB_pad],
+                            colsB * sizeof(double));
+
                     PokazMacierz(hWnd, macierzC, rowsA, colsB, czasASM, nThreads);
-                    ZapiszMacierzDoPliku(L"wynikASM.txt", macierzC, rowsA, colsB, czasASM, nThreads);
+                    ZapiszMacierzDoCSV(L"wynikASM.csv", macierzC, rowsA, colsB, czasASM, nThreads, L"ASM");
                     FreeLibrary(dllAsm);
                 }
                 else {
