@@ -4,6 +4,7 @@
 * na nastepny raz
 * Coś wektorowo w asmie
 * 
+* Termin prezentacji 20 stycznia!!!
 */
 #include "framework.h"
 #include "Projekt.h"
@@ -168,7 +169,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_PROJEKT, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
-
+    
     // Wykonaj inicjowanie aplikacji:
     if (!InitInstance (hInstance, nCmdShow))
     {
@@ -234,7 +235,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Przechowuj dojście wystąpienia w naszej zmiennej globalnej
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+   HWND hWnd = CreateWindowW(szWindowClass, L"Mnożenie macierzy - JA PROJEKT", WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, CW_USEDEFAULT, 600, 350, nullptr, nullptr, hInstance, nullptr); // te dwie liczby to od zmiany wielkosci okna przy uruchamianiu
 
    if (!hWnd)

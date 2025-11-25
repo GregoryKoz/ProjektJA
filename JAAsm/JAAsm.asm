@@ -82,9 +82,9 @@ done:
     pop     r15
     pop     r14
     pop     rbx
-    vzeroupper                  ; dla bezpieczeñstwa po AVX
+    vzeroupper                  
     ret
 
 MultiplyAsmPartial ENDP
-
+; nie mnozyc tylko dodawac bo dodawanie jest szybsze,
 END
