@@ -1,29 +1,13 @@
+/* PROJEKT JÊZYKI ASEMBLEROWE
+ TEMAT: MNO¯ENIE MACIERZY
+ AUTOR: GRZEGORZ KOZ£OWSKI sem.5 INF
+ DATA WYKONANIA PROJEKTU : semestr zimowy rok akademicki 2025 / 2026
+ WERSJA FINALNA
+*/
+
 #include "Macierze.h"
 #include "pch.h"
-extern "C" __declspec(dllexport)
-void __cdecl MultiplyCpp(
-    const double* A, const double* B, double* C,
-    int rowsA, int colsA, int colsB)
-{
-    
-    for (int i = 0; i < rowsA * colsB; ++i)
-        C[i] = 0.0;
 
-    // Mno¿enie macierzy
-    for (int i = 0; i < rowsA; ++i)
-    {
-        for (int k = 0; k < colsA; ++k)
-        {
-            double a = A[i * colsA + k];
-            const double* rowB = B + k * colsB;
-            double* rowC = C + i * colsB;
-            for (int j = 0; j < colsB; ++j)
-            {
-                rowC[j] += a * rowB[j];
-            }
-        }
-    }
-}
 extern "C" __declspec(dllexport)
 void MultiplyCppPartial(
     const double* A, const double* B, double* C,

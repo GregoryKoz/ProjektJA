@@ -1,3 +1,8 @@
+;PROJEKT JÊZYKI ASEMBLEROWE
+;TEMAT: MNO¯ENIE MACIERZY
+;AUTOR: GRZEGORZ KOZ£OWSKI sem.5 INF
+;DATA WYKONANIA PROJEKTU: semestr zimowy rok akademicki 2025/2026
+;WERSJA FINALNA
 PUBLIC MultiplyAsmPartial
 
 .code
@@ -47,15 +52,13 @@ vec_inner_k:
     mov     eax, r12d
     imul    eax, r10d
     add     eax, ebx
-    imul    rax, 8
-    vbroadcastsd ymm1, qword ptr [rcx + rax]
+    vbroadcastsd ymm1, qword ptr [rcx + rax*8]
 
     ; B[k*colsB + j .. j+3]
     mov     eax, ebx
     imul    eax, r11d
     add     eax, r14d
-    imul    rax, 8
-    vmovupd ymm2, ymmword ptr [rdx + rax]
+    vmovupd ymm2, ymmword ptr [rdx + rax*8]
 
     vmulpd  ymm2, ymm2, ymm1
     vaddpd  ymm0, ymm0, ymm2
@@ -68,8 +71,7 @@ vec_store:
     mov     eax, r12d
     imul    eax, r11d
     add     eax, r14d
-    imul    rax, 8
-    vmovupd ymmword ptr [r8 + rax], ymm0
+    vmovupd ymmword ptr [r8 + rax*8], ymm0
 
     add     r14d, 4             ; j += 4
     jmp     vec_j_loop
@@ -86,5 +88,4 @@ done:
     ret
 
 MultiplyAsmPartial ENDP
-; nie mnozyc tylko dodawac bo dodawanie jest szybsze,
 END

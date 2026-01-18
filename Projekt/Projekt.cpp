@@ -1,10 +1,8 @@
-﻿// Projekt.cpp : Definiuje punkt wejścia dla aplikacji.
-/*
-* 18.11.2025
-* na nastepny raz
-* Coś wektorowo w asmie
-* 
-* Termin prezentacji 20 stycznia!!!
+﻿/* PROJEKT JĘZYKI ASEMBLEROWE
+; TEMAT: MNOŻENIE MACIERZY
+; AUTOR: GRZEGORZ KOZŁOWSKI sem.5 INF
+; DATA WYKONANIA PROJEKTU : semestr zimowy rok akademicki 2025 / 2026
+; WERSJA FINALNA
 */
 #include "framework.h"
 #include "Projekt.h"
